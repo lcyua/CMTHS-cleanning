@@ -1,225 +1,173 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>청소구역 배정 프로그램</title>
   <style>
-    body { font-family: 'Arial', sans-serif; text-align: center; padding: 30px; }
-    table { margin: 0 auto; border-collapse: collapse; }
-    td, th { border: 1px solid #333; padding: 10px 15px; }
-    input[type="password"], input[type="text"] { padding: 5px; }
-    input[type="text"] { width: 200px; }
-    #edit-area { display: none; margin-top: 20px; }
+    body { font-family: sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     .hidden { display: none; }
+    .login-section { margin-top: 30px; }
+    input[type="password"], input[type="text"] { padding: 5px; margin: 5px 0; }
+    .editable-table input { width: 90%; padding: 4px; }
+    .notice { margin-top: 20px; font-weight: bold; color: darkred; }
   </style>
 </head>
 <body>
-  <h1>오늘의 청소구역 배정표</h1>
-  <p id="date"></p>
-  <p id="message"></p>
-  <p id="next-date"></p>
-  <p id="next-title"></p>
-  <table id="assignment-table"></table>
-  <table id="next-assignment-table"></table>
+  <h1>청소구역 배정 프로그램</h1>
+  <div id="dateDisplay"></div>
+  <div id="assignment"></div>
 
-  <div style="margin-top: 30px;">
-    <button onclick="showLogin()">관리자 로그인</button>
-    <div id="login-area" class="hidden">
-      <input type="password" id="admin-password" placeholder="비밀번호 입력">
-      <button onclick="checkPassword()">확인</button>
-      <p id="password-message" style="color:red;"></p>
+  <div class="login-section">
+    <h3>관리자 로그인</h3>
+    <input type="password" id="adminPassword" placeholder="비밀번호 입력" />
+    <button onclick="checkPassword()">로그인</button>
+    <div id="loginError" class="notice hidden">잘못된 비밀번호입니다</div>
+    <div id="editSection" class="hidden">
+      <h3>청소구역 및 학생명 변경</h3>
+      <table class="editable-table">
+        <tr><th>청소구역명</th><th>학생명</th></tr>
+        <tbody id="editTable"></tbody>
+      </table>
+      <button onclick="saveEdits()">저장하기</button>
     </div>
   </div>
 
-  <div id="edit-area">
-    <h3>청소구역/학생명 수정</h3>
-    <form id="edit-form"></form>
-    <button type="button" onclick="saveChanges()">저장</button>
-    <p id="save-message" style="color: green;"></p>
-  </div>
-
   <script>
-    let students = [];
-    let areas = [];
+    const areas = [
+      "빗자루, 대걸래, 분리수거",
+      "빗자루, 대걸래, 분리수거",
+      "환기, 빗자루, 대걸래",
+      "손걸래, 세절기",
+      "손걸래, 세절기",
+      "교사쓰레기통, 전체 쓰레기통 정리"
+    ];
 
-    function loadData() {
-      const savedStudents = localStorage.getItem("students");
-      const savedAreas = localStorage.getItem("areas");
+    let names = ["박찬진", "이동현", "정지훈", "정한영", "하현일", "허윤재"];
 
-      if (savedStudents && savedAreas) {
-        students = JSON.parse(savedStudents);
-        areas = JSON.parse(savedAreas);
-      } else {
-        students = ["박찬진", "이동현", "정지훈", "정한영", "하현일", "허윤재"];
-        areas = [
-          "빗자루, 대걸래, 분리수거",
-          "빗자루, 대걸래, 분리수거",
-          "환기, 빗자루, 대걸래",
-          "손걸래, 세절기",
-          "손걸래, 세절기",
-          "교사쓰레기통, 전체 쓰레기통 정리"
-        ];
-      }
+    const koreanDays = ['일', '월', '화', '수', '목', '금', '토'];
+
+    function getTodaySeed(date = new Date()) {
+      const koreaTime = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+      const year = koreaTime.getFullYear();
+      const month = String(koreaTime.getMonth() + 1).padStart(2, '0');
+      const day = String(koreaTime.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
-    function saveData() {
-      localStorage.setItem("students", JSON.stringify(students));
-      localStorage.setItem("areas", JSON.stringify(areas));
-    }
-
-    function getKoreanTime() {
-      const now = new Date();
-      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-      return new Date(utc + (9 * 60 * 60000));
-    }
-
-    function getSeedDate(date = null) {
-      const today = date || getKoreanTime();
-      const weekday = today.getDay();
-      const hour = today.getHours();
-      const isBefore8AM = hour < 8;
-      let offset = 0;
-      if (isBefore8AM) offset = -1;
-      let day = new Date(today);
-      day.setDate(today.getDate() + offset);
-
-      while (![1, 3, 5].includes(day.getDay())) {
-        day.setDate(day.getDate() - 1);
-      }
-      return day.toISOString().slice(0, 10);
-    }
-
-    function getNextCleaningDate(date) {
-      const d = new Date(date);
-      for (let i = 1; i <= 7; i++) {
-        const next = new Date(d);
-        next.setDate(d.getDate() + i);
-        if ([1, 3, 5].includes(next.getDay())) {
-          return next;
-        }
-      }
-    }
-
-    function hashString(str) {
+    function hashCode(str) {
       let hash = 0;
       for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i);
+        const chr = str.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
         hash |= 0;
       }
-      return Math.abs(hash);
+      return hash;
     }
 
     function seededShuffle(array, seed) {
-      const result = array.slice();
-      let m = result.length, t, i;
-      while (m) {
-        i = Math.floor(random(seed) * m--);
-        t = result[m];
-        result[m] = result[i];
-        result[i] = t;
-        seed++;
+      const result = [...array];
+      let currentIndex = result.length, temporaryValue, randomIndex;
+      let random = mulberry32(seed);
+      while (0 !== currentIndex) {
+        randomIndex = Math.floor(random() * currentIndex);
+        currentIndex--;
+        temporaryValue = result[currentIndex];
+        result[currentIndex] = result[randomIndex];
+        result[randomIndex] = temporaryValue;
       }
       return result;
     }
 
-    function random(seed) {
-      const x = Math.sin(seed++) * 10000;
-      return x - Math.floor(x);
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
     }
 
-    function updateDisplay() {
-      const now = getKoreanTime();
-      const todayStr = now.toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const weekday = now.getDay();
-      document.getElementById("date").textContent = todayStr;
+    function isCleaningDay(date) {
+      const day = date.getDay();
+      return day === 1 || day === 3 || day === 5;
+    }
 
-      const message = document.getElementById("message");
-      const table = document.getElementById("assignment-table");
-      const nextDateElem = document.getElementById("next-date");
-      const nextTitle = document.getElementById("next-title");
-      const nextTable = document.getElementById("next-assignment-table");
-
-      if ([1, 3, 5].includes(weekday)) {
-        const seedDate = getSeedDate();
-        const seed = hashString(seedDate);
-        const shuffled = seededShuffle([0,1,2,3,4,5], seed);
-
-        let html = `<tr><th>학생</th><th>청소구역</th></tr>`;
-        for (let i = 0; i < 6; i++) {
-          html += `<tr><td>${students[shuffled[i]]}</td><td>${areas[i]}</td></tr>`;
-        }
-        table.innerHTML = html;
-        message.textContent = "";
-        nextDateElem.textContent = "";
-        nextTitle.textContent = "";
-        nextTable.innerHTML = "";
-      } else {
-        message.textContent = "오늘은 봉사요일이 아닙니다.";
-
-        const next = getNextCleaningDate(now);
-        const nextStr = next.toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        nextDateElem.textContent = `다음 청소일 : ${nextStr}`;
-        nextTitle.textContent = `다음 청소구역은 아래와 같습니다`;
-
-        const seedDate = getSeedDate(next);
-        const seed = hashString(seedDate);
-        const shuffled = seededShuffle([0,1,2,3,4,5], seed);
-
-        let nextHtml = `<tr><th>학생</th><th>청소구역</th></tr>`;
-        for (let i = 0; i < 6; i++) {
-          nextHtml += `<tr><td>${students[shuffled[i]]}</td><td>${areas[i]}</td></tr>`;
-        }
-        nextTable.innerHTML = nextHtml;
-        table.innerHTML = "";
+    function getNextCleaningDate(fromDate) {
+      const date = new Date(fromDate);
+      while (true) {
+        date.setDate(date.getDate() + 1);
+        if (isCleaningDay(date)) return date;
       }
     }
 
-    function showLogin() {
-      document.getElementById("login-area").classList.remove("hidden");
+    function formatDate(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function displayAssignments() {
+      const now = new Date();
+      const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+      const seedDate = getTodaySeed(koreaTime);
+      const seed = hashCode(seedDate);
+
+      const todayDay = koreaTime.getDay();
+      const todayStr = `${formatDate(koreaTime)} (${koreanDays[todayDay]})`;
+      document.getElementById("dateDisplay").innerHTML = `<h2>오늘 날짜: ${todayStr}</h2>`;
+
+      const assignmentDiv = document.getElementById("assignment");
+      if (isCleaningDay(koreaTime)) {
+        const order = seededShuffle([0,1,2,3,4,5], seed);
+        let html = `<table><tr><th>청소구역</th><th>학생</th></tr>`;
+        for (let i = 0; i < 6; i++) {
+          html += `<tr><td>${areas[i]}</td><td>${names[order[i]]}</td></tr>`;
+        }
+        html += `</table>`;
+        assignmentDiv.innerHTML = html;
+      } else {
+        const nextDate = getNextCleaningDate(koreaTime);
+        const nextSeed = hashCode(getTodaySeed(nextDate));
+        const order = seededShuffle([0,1,2,3,4,5], nextSeed);
+        let html = `<div class="notice">오늘은 봉사요일이 아닙니다</div>`;
+        html += `<div class="notice">다음 청소일: ${formatDate(nextDate)} (${koreanDays[nextDate.getDay()]})</div>`;
+        html += `<div class="notice">다음 청소구역은 아래와 같습니다:</div>`;
+        html += `<table><tr><th>청소구역</th><th>학생</th></tr>`;
+        for (let i = 0; i < 6; i++) {
+          html += `<tr><td>${areas[i]}</td><td>${names[order[i]]}</td></tr>`;
+        }
+        html += `</table>`;
+        assignmentDiv.innerHTML = html;
+      }
     }
 
     function checkPassword() {
-      const password = document.getElementById("admin-password").value;
-      const message = document.getElementById("password-message");
-      if (password === "1214") {
-        message.textContent = "";
-        showEditForm();
+      const input = document.getElementById("adminPassword").value;
+      const error = document.getElementById("loginError");
+      const edit = document.getElementById("editSection");
+      if (input === "1214") {
+        error.classList.add("hidden");
+        edit.classList.remove("hidden");
+        const editTable = document.getElementById("editTable");
+        editTable.innerHTML = "";
+        for (let i = 0; i < 6; i++) {
+          editTable.innerHTML += `<tr><td><input type='text' value='${areas[i]}' id='area${i}'></td><td><input type='text' value='${names[i]}' id='name${i}'></td></tr>`;
+        }
       } else {
-        message.textContent = "잘못된 비밀번호입니다";
+        error.classList.remove("hidden");
       }
     }
 
-    function showEditForm() {
-      const form = document.getElementById("edit-form");
-      form.innerHTML = "";
+    function saveEdits() {
       for (let i = 0; i < 6; i++) {
-        form.innerHTML += `
-          <div style="margin-bottom:10px;">
-            <input type="text" class="edit-area" value="${areas[i]}">
-            <input type="text" class="edit-student" value="${students[i]}">
-          </div>
-        `;
+        areas[i] = document.getElementById(`area${i}`).value;
+        names[i] = document.getElementById(`name${i}`).value;
       }
-      document.getElementById("edit-area").style.display = "block";
+      displayAssignments();
     }
 
-    function saveChanges() {
-      const areaInputs = document.querySelectorAll(".edit-area");
-      const studentInputs = document.querySelectorAll(".edit-student");
-
-      for (let i = 0; i < 6; i++) {
-        areas[i] = areaInputs[i].value;
-        students[i] = studentInputs[i].value;
-      }
-
-      saveData();
-      document.getElementById("save-message").textContent = "저장되었습니다.";
-      updateDisplay();
-    }
-
-    loadData();
-    updateDisplay();
+    displayAssignments();
   </script>
 </body>
 </html>
