@@ -37,15 +37,33 @@
   </div>
 
   <script>
-    let students = ["박찬진", "이동현", "정지훈", "정한영", "하현일", "허윤재"];
-    let areas = [
-      "빗자루, 대걸래, 분리수거",
-      "빗자루, 대걸래, 분리수거",
-      "환기, 빗자루, 대걸래",
-      "손걸래, 세절기",
-      "손걸래, 세절기",
-      "교사쓰레기통, 전체 쓰레기통 정리"
-    ];
+    let students = [];
+    let areas = [];
+
+    function loadData() {
+      const savedStudents = localStorage.getItem("students");
+      const savedAreas = localStorage.getItem("areas");
+
+      if (savedStudents && savedAreas) {
+        students = JSON.parse(savedStudents);
+        areas = JSON.parse(savedAreas);
+      } else {
+        students = ["박찬진", "이동현", "정지훈", "정한영", "하현일", "허윤재"];
+        areas = [
+          "빗자루, 대걸래, 분리수거",
+          "빗자루, 대걸래, 분리수거",
+          "환기, 빗자루, 대걸래",
+          "손걸래, 세절기",
+          "손걸래, 세절기",
+          "교사쓰레기통, 전체 쓰레기통 정리"
+        ];
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem("students", JSON.stringify(students));
+      localStorage.setItem("areas", JSON.stringify(areas));
+    }
 
     function getKoreanTime() {
       const now = new Date();
@@ -57,12 +75,9 @@
       const today = getKoreanTime();
       const weekday = today.getDay();
       const hour = today.getHours();
-      const minute = today.getMinutes();
       const isBefore8AM = hour < 8;
       let offset = 0;
-      if (isBefore8AM) {
-        offset = -1;
-      }
+      if (isBefore8AM) offset = -1;
       let day = new Date(today);
       day.setDate(today.getDate() + offset);
 
@@ -163,10 +178,12 @@
         students[i] = studentInputs[i].value;
       }
 
+      saveData();
       document.getElementById("save-message").textContent = "저장되었습니다.";
       updateDisplay();
     }
 
+    loadData();
     updateDisplay();
   </script>
 </body>
