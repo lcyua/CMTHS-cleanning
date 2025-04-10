@@ -8,8 +8,8 @@
     body { font-family: 'Arial', sans-serif; text-align: center; padding: 30px; }
     table { margin: 0 auto; border-collapse: collapse; }
     td, th { border: 1px solid #333; padding: 10px 15px; }
-    input[type="password"] { padding: 5px; }
-    input[type="text"] { width: 200px; padding: 5px; }
+    input[type="password"], input[type="text"] { padding: 5px; }
+    input[type="text"] { width: 200px; }
     #edit-area { display: none; margin-top: 20px; }
     .hidden { display: none; }
   </style>
@@ -32,11 +32,13 @@
   <div id="edit-area">
     <h3>청소구역/학생명 수정</h3>
     <form id="edit-form"></form>
+    <button onclick="saveChanges()">저장</button>
+    <p id="save-message" style="color: green;"></p>
   </div>
 
   <script>
-    const students = ["박찬진", "이동현", "정지훈", "정한영", "하현일", "허윤재"];
-    const areas = [
+    let students = ["박찬진", "이동현", "정지훈", "정한영", "하현일", "허윤재"];
+    let areas = [
       "빗자루, 대걸래, 분리수거",
       "빗자루, 대걸래, 분리수거",
       "환기, 빗자루, 대걸래",
@@ -144,12 +146,25 @@
       for (let i = 0; i < 6; i++) {
         form.innerHTML += `
           <div style="margin-bottom:10px;">
-            <input type="text" placeholder="청소구역" value="${areas[i]}">
-            <input type="text" placeholder="학생명" value="${students[i]}">
+            <input type="text" class="edit-area" value="${areas[i]}">
+            <input type="text" class="edit-student" value="${students[i]}">
           </div>
         `;
       }
       document.getElementById("edit-area").style.display = "block";
+    }
+
+    function saveChanges() {
+      const areaInputs = document.querySelectorAll(".edit-area");
+      const studentInputs = document.querySelectorAll(".edit-student");
+
+      for (let i = 0; i < 6; i++) {
+        areas[i] = areaInputs[i].value;
+        students[i] = studentInputs[i].value;
+      }
+
+      document.getElementById("save-message").textContent = "저장되었습니다.";
+      updateDisplay();
     }
 
     updateDisplay();
