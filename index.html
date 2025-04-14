@@ -17,9 +17,6 @@
       background-color: #f0f0f0;
       padding: 10px;
     }
-    #adminPanel {
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
@@ -27,20 +24,13 @@
   <div id="dateInfo"></div>
   <div id="cleaningTable"></div>
 
-  <button onclick="showAdmin()">🔐 관리자 로그인</button>
-
-  <div id="adminPanel" style="display:none;">
-    <p>비밀번호: <input type="password" id="adminPassword" /> <button onclick="checkPassword()">확인</button></p>
-    <div id="adminMessage" style="margin-top: 10px;"></div>
-  </div>
-
   <script>
     const defaultZones = [
-      "빗자루, 대걸래, 분리수거",
-      "빗자루, 대걸래, 분리수거",
-      "환기, 빗자루, 대걸래",
-      "손걸래, 세절기",
-      "손걸래, 세절기",
+      "취업지원부 줄 빗자루, 대걸래, 분리수거 가져가기",
+      "가운데 줄 빗자루, 대걸래, 분리수거 가져가기",
+      "진로상담교육부 줄 빗자루, 대걸래, 환기",
+      "화분 밑 손걸래, 취업지원부 세절기",
+      "싱크대 커피머신 서랍장 손걸래, 진로상담교육부 세절기",
       "교사쓰레기통, 전체 쓰레기통 정리"
     ];
 
@@ -63,7 +53,7 @@
     function getSeedFromDate(dateString) {
       const baseDateStr = new Date(dateString).toISOString().split('T')[0];
       const hash = Math.abs(hashCode(baseDateStr)).toString();
-      return parseInt(hash[5]);
+      return parseInt(hash[5]); // 앞에서 6번째 숫자
     }
 
     function shuffle(seed) {
@@ -116,23 +106,6 @@
         tableDiv.innerHTML = `<p>오늘은 봉사요일이 아닙니다.</p>
                               <p><strong>다음 청소일:</strong> ${nextDate.toISOString().split('T')[0]}</p>
                               ${renderTable(nextDate, false)}`;
-      }
-    }
-
-    function showAdmin() {
-      document.getElementById("adminPanel").style.display = "block";
-    }
-
-    function checkPassword() {
-      const input = document.getElementById("adminPassword").value;
-      const message = document.getElementById("adminMessage");
-      if (input === "1214") {
-        message.innerHTML = `
-          ✅ 관리자 인증에 성공했습니다.<br/>
-          🔧 <a href="https://github.com/amuse0636/CMTHS_cleaning/edit/main/index.html" target="_blank">코드를 수정하려면 GitHub 링크를 클릭하세요</a>.
-        `;
-      } else {
-        message.innerHTML = "❌ 잘못된 비밀번호입니다.";
       }
     }
 
